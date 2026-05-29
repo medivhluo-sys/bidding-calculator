@@ -62,13 +62,10 @@ def run_simulation(
 
             my_score = scores[0]
             best_score = max(scores)
-            if my_score > best_score:
+            # 并列时随机择一胜出；单独胜出时 tied_indices == [0] 恒为 True
+            tied_indices = [i for i, s in enumerate(scores) if s == best_score]
+            if np.random.choice(tied_indices) == 0:
                 win_count += 1
-            elif my_score == best_score:
-                # 并列时随机择一胜出
-                tied_indices = [i for i, s in enumerate(scores) if s == best_score]
-                if np.random.choice(tied_indices) == 0:
-                    win_count += 1
             total_score += my_score
 
         results[bid_self] = {
