@@ -43,6 +43,10 @@ class TestUniformDist:
         assert "10" in repr(dist)
         assert "20" in repr(dist)
 
+    def test_low_greater_than_high_raises(self):
+        with pytest.raises(ValueError, match="不能大于"):
+            UniformDist(low=20, high=10)
+
 
 class TestTriangularDist:
     """三角分布测试"""
@@ -60,6 +64,10 @@ class TestTriangularDist:
         samples = [dist.sample() for _ in range(5000)]
         avg = np.mean(samples)
         assert avg > 15.8  # 偏向高端（理论均值 16.0，给抽样误差留余量）
+
+    def test_mode_out_of_bounds_raises(self):
+        with pytest.raises(ValueError, match="需要"):
+            TriangularDist(low=10, mode=25, high=20)
 
 
 class TestNormalDist:
@@ -79,6 +87,14 @@ class TestNormalDist:
         for _ in range(100):
             assert dist.sample() >= 0
 
+    def test_negative_sigma_raises(self):
+        with pytest.raises(ValueError, match="必须 > 0"):
+            NormalDist(mu=10, sigma=-1)
+
+    def test_zero_sigma_raises(self):
+        with pytest.raises(ValueError, match="必须 > 0"):
+            NormalDist(mu=10, sigma=0)
+
 
 class TestPERTDist:
     """PERT 分布测试"""
@@ -88,3 +104,13 @@ class TestPERTDist:
         np.random.seed(42)
         samples = [dist.sample() for _ in range(1000)]
         assert all(10 <= s <= 20 for s in samples)
+
+    def test_mode_out_of_bounds_raises(self):
+        with pytest.raises(ValueError, match="需要"):
+            PERTDist(low=10, mode=25, high=20)
+
+    def test_zero_span_returns_low(self):
+        """span==0 时直接返回 low 值，不触发除零"""
+        dist = PERTDist(low=5, mode=5, high=5)
+        np.random.seed(42)
+        assert dist.sample() == 5.0
