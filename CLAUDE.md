@@ -2,11 +2,23 @@
 
 基于蒙特卡洛模拟的投标报价分析工具，支持均值基准价法、多种对手分布模型、交互式图表。
 
+## 环境要求
+
+Python 3.12+
+
+## 安装
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
 ## 运行
 
 ```bash
 source venv/bin/activate
-streamlit run app.py --server.port 8002
+streamlit run app.py --server.port 8502
 ```
 
 ## 架构
