@@ -84,3 +84,42 @@ class TestCalculateScores:
         scores = calculate_scores([], benchmark_coefficient=1.0, max_score=20,
                                   deduction_up=1.0, deduction_down=1.0, min_score=0)
         assert scores == []
+
+    def test_zero_benchmark_all_zero_bids(self):
+        """零基准价：所有报价为 0 时，全员得满分不除零"""
+        bids = [0.0, 0.0, 0.0]
+        scores = calculate_scores(
+            bids,
+            benchmark_coefficient=1.0,
+            max_score=20,
+            deduction_up=1.0,
+            deduction_down=1.0,
+            min_score=0,
+        )
+        assert scores == [20.0, 20.0, 20.0]
+
+    def test_zero_benchmark_zero_coefficient(self):
+        """零基准价：折算系数为 0 导致基准价为 0，全员得满分不除零"""
+        bids = [100, 110, 90]
+        scores = calculate_scores(
+            bids,
+            benchmark_coefficient=0.0,
+            max_score=20,
+            deduction_up=1.0,
+            deduction_down=1.0,
+            min_score=0,
+        )
+        assert scores == [20.0, 20.0, 20.0]
+
+    def test_bid_equals_benchmark_explicit(self):
+        """报价恰好等于基准价时，偏离率为 0，得满分"""
+        bids = [100, 100, 100, 100]
+        scores = calculate_scores(
+            bids,
+            benchmark_coefficient=1.0,
+            max_score=20,
+            deduction_up=1.0,
+            deduction_down=1.0,
+            min_score=0,
+        )
+        assert scores == pytest.approx([20.0, 20.0, 20.0, 20.0])

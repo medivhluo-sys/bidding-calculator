@@ -32,14 +32,20 @@ def calculate_scores(
     mean_price = sum(bids) / len(bids)
     benchmark = mean_price * benchmark_coefficient
 
+    # 基准价为 0 时，所有报价偏离率相同，均得满分
+    if benchmark == 0.0:
+        return [max_score] * len(bids)
+
     scores = []
     for bid in bids:
         deviation_pct = abs(bid - benchmark) / benchmark * 100
 
         if bid > benchmark:
             penalty = deviation_pct * deduction_up
-        else:
+        elif bid < benchmark:
             penalty = deviation_pct * deduction_down
+        else:  # bid == benchmark
+            penalty = 0.0
 
         score = max_score - penalty
         score = max(score, min_score)
