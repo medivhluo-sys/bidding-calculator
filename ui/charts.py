@@ -92,9 +92,6 @@ def plot_expected_score(results: dict[float, dict[str, float]],
 
 def plot_risk_heatmap(
     results: dict[float, dict[str, float]],
-    competitor_dists_info: list[dict],
-    bid_step: float,
-    num_simulations: int,
 ) -> go.Figure:
     """风险热力图：你的报价 vs 中标概率，用颜色深度表示风险水平。
 

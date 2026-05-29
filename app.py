@@ -88,12 +88,7 @@ if run_button:
 
     with tab3:
         st.plotly_chart(
-            plot_risk_heatmap(
-                results,
-                competitor_dists_info=params["competitors"],
-                bid_step=params["bid_step"],
-                num_simulations=params["num_simulations"],
-            ),
+            plot_risk_heatmap(results),
             use_container_width=True,
         )
 

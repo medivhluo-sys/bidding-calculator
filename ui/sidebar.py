@@ -1,7 +1,6 @@
 """Streamlit 侧边栏 — 参数配置面板。"""
 
 import streamlit as st
-from models.distribution import create_distribution
 
 
 def render_sidebar() -> dict:
