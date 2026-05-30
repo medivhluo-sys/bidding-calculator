@@ -35,3 +35,37 @@ streamlit run app.py --server.port 8502
 ```bash
 pytest -v
 ```
+
+## 线上地址
+
+手机端访问（无需电脑开机）：`https://bidding-calculator-wsq2qct7wnwsvlbsjbhtk3.streamlit.app`
+
+## 修订与同步
+
+代码推送后 Streamlit Cloud 自动重新部署，无需手动操作。
+
+```bash
+cd ~/agents/work/bidding-calculator
+source venv/bin/activate
+
+# 1. 修改代码
+# 2. 运行测试确认
+pytest -v
+
+# 3. 提交
+git add -A && git commit -m "描述改动内容"
+
+# 4. 推送 GitHub（自动触发 Streamlit Cloud 更新）
+export GH_TOKEN="你的 GitHub PAT"
+gh auth setup-git
+git push
+```
+
+推送后等待 1-2 分钟，刷新手机网址即可看到最新版。
+
+## 技术栈
+
+- Web 框架：Streamlit
+- 图表：Plotly
+- 数值计算：NumPy
+- 部署：GitHub + Streamlit Cloud（自动同步）
