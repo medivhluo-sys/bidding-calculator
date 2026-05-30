@@ -103,3 +103,52 @@ class TestRunSimulation:
         assert 30.0 in result
         assert 35.0 in result
         assert 40.0 in result
+
+    def test_tolerance_zero_gte_win_prob(self):
+        """tolerance=0 时，tolerance_prob >= win_prob（因为 win_prob 有随机平局拆分）"""
+        dists = [UniformDist(30, 42)]
+        np.random.seed(42)
+        result = run_simulation(
+            bid_range=(30, 40),
+            bid_step=5.0,
+            competitor_dists=dists,
+            num_simulations=500,
+            tolerance=0.0,
+        )
+        for data in result.values():
+            # tolerance 计数所有达到最高分的（含平局），win_prob 随机拆分平局
+            assert data["tolerance_prob"] >= data["win_prob"]
+
+    def test_tolerance_larger_gives_higher_prob(self):
+        """tolerance 增大时 tolerance_prob 应 >= 小 tolerance 的结果"""
+        dists = [UniformDist(30, 42)]
+        np.random.seed(42)
+        result_small = run_simulation(
+            bid_range=(35, 35),
+            bid_step=1.0,
+            competitor_dists=dists,
+            num_simulations=500,
+            tolerance=1.0,
+        )
+        np.random.seed(42)
+        result_large = run_simulation(
+            bid_range=(35, 35),
+            bid_step=1.0,
+            competitor_dists=dists,
+            num_simulations=500,
+            tolerance=3.0,
+        )
+        assert result_large[35.0]["tolerance_prob"] >= result_small[35.0]["tolerance_prob"]
+
+    def test_tolerance_prob_is_percentage(self):
+        """tolerance_prob 应在 0-100% 之间"""
+        dists = [UniformDist(30, 42)]
+        result = run_simulation(
+            bid_range=(30, 40),
+            bid_step=5.0,
+            competitor_dists=dists,
+            num_simulations=500,
+            tolerance=3.0,
+        )
+        for data in result.values():
+            assert 0.0 <= data["tolerance_prob"] <= 100.0
