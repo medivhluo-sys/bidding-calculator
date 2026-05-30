@@ -13,7 +13,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 from models.distribution import create_distribution, BaseDistribution
 from simulation.engine import run_simulation
 from ui.sidebar import render_sidebar
-from ui.charts import plot_tolerance_probability, get_best_recommendation
+from ui.charts import (
+    plot_tolerance_probability,
+    plot_competitor_gaps,
+    get_best_recommendation,
+)
 
 st.set_page_config(
     page_title="报价测算工具",
@@ -65,14 +69,22 @@ if run_button:
 
     tol = params["tolerance"]
 
-    # 核心图表
+    # 视角一：容忍分差概率
+    st.subheader("🎯 分差 ≤ %s 分的概率" % tol)
     st.plotly_chart(
         plot_tolerance_probability(results, tol),
         use_container_width=True,
     )
-
-    # 建议
     st.markdown(get_best_recommendation(results, tol))
+
+    # 视角二：与各对手的分差
+    st.subheader("⚔️ 与各对手的期望分差")
+    st.caption("正值 = 我得分高于对手，负值 = 对手高于我")
+    competitor_labels = [c["label"] for c in params["competitors"]]
+    st.plotly_chart(
+        plot_competitor_gaps(results, competitor_labels),
+        use_container_width=True,
+    )
 
     # 原始数据（折叠）
     with st.expander("📋 原始数据"):

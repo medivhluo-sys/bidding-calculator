@@ -70,6 +70,62 @@ def plot_tolerance_probability(
     return fig
 
 
+# 对手分差图的颜色调色板
+_GAP_COLORS = [
+    "#E53935", "#1E88E5", "#43A047", "#FB8C00",
+    "#8E24AA", "#00ACC1", "#FFB300", "#5E35B1",
+]
+
+
+def plot_competitor_gaps(
+    results: dict[float, dict[str, float]],
+    competitor_labels: list[str],
+) -> go.Figure:
+    """与各对手的期望分差曲线。
+
+    正值 = 我得分高于该对手，负值 = 我低于该对手。
+
+    Args:
+        results: 模拟引擎返回的结果字典
+        competitor_labels: 对手标签列表（如 ["对手 1", "对手 2"]）
+
+    Returns:
+        Plotly Figure 对象
+    """
+    bids = list(results.keys())
+    n_competitors = len(results[bids[0]]["competitor_gaps"])
+
+    fig = go.Figure()
+
+    for j in range(n_competitors):
+        gaps = [results[b]["competitor_gaps"][j]["avg_gap"] for b in bids]
+        label = competitor_labels[j] if j < len(competitor_labels) else f"对手 {j + 1}"
+        color = _GAP_COLORS[j % len(_GAP_COLORS)]
+
+        fig.add_trace(
+            go.Scatter(
+                x=bids,
+                y=gaps,
+                mode="lines+markers",
+                name=label,
+                line=dict(color=color, width=2),
+                marker=dict(size=5),
+                hovertemplate=f"{label}<br>报价: %{{x}}<br>期望分差: %{{y:.2f}}<extra></extra>",
+            )
+        )
+
+    # 零分差参考线
+    fig.add_hline(y=0, line_dash="solid", line_color="#333", annotation_text="持平线")
+
+    fig.update_layout(
+        title="与各对手的期望分差",
+        xaxis_title="你的报价",
+        yaxis_title="期望分差（我 − 对手）",
+        hovermode="x unified",
+    )
+    return fig
+
+
 def get_best_recommendation(
     results: dict[float, dict[str, float]],
     tolerance: float,

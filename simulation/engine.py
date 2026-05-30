@@ -38,7 +38,8 @@ def run_simulation(
 
     Returns:
         {bid_value: {"win_prob": 严格中标概率%, "tolerance_prob": 容忍分差概率%,
-                     "expected_score": 期望得分}}
+                     "expected_score": 期望得分,
+                     "competitor_gaps": [{"avg_gap": 平均分差, "beat_rate": 胜率%}, ...]}}
     """
     start, end = bid_range
     num_steps = int(round((end - start) / bid_step)) + 1
@@ -50,6 +51,9 @@ def run_simulation(
         win_count = 0
         tolerance_count = 0
         total_score = 0.0
+        n_competitors = len(competitor_dists)
+        gap_sums = [0.0] * n_competitors
+        beat_counts = [0] * n_competitors
 
         for _ in range(num_simulations):
             competitor_bids = [d.sample() for d in competitor_dists]
@@ -76,12 +80,26 @@ def run_simulation(
             if my_score >= best_score - tolerance:
                 tolerance_count += 1
 
+            # 与每个对手的分差
+            for j in range(n_competitors):
+                gap = my_score - scores[j + 1]
+                gap_sums[j] += gap
+                if gap > 0:
+                    beat_counts[j] += 1
+
             total_score += my_score
 
         results[bid_self] = {
             "win_prob": win_count / num_simulations * 100,
             "tolerance_prob": tolerance_count / num_simulations * 100,
             "expected_score": total_score / num_simulations,
+            "competitor_gaps": [
+                {
+                    "avg_gap": gap_sums[j] / num_simulations,
+                    "beat_rate": beat_counts[j] / num_simulations * 100,
+                }
+                for j in range(n_competitors)
+            ],
         }
 
     return results

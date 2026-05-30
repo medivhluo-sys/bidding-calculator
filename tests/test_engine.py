@@ -152,3 +152,28 @@ class TestRunSimulation:
         )
         for data in result.values():
             assert 0.0 <= data["tolerance_prob"] <= 100.0
+
+    def test_competitor_gaps_structure(self):
+        """验证 competitor_gaps 字段存在且数据合理"""
+        dists = [UniformDist(30, 42), UniformDist(35, 42)]
+        result = run_simulation(
+            bid_range=(35, 35),
+            bid_step=1.0,
+            competitor_dists=dists,
+            num_simulations=500,
+        )
+        gaps = result[35.0]["competitor_gaps"]
+        assert len(gaps) == 2  # 两个对手
+        for g in gaps:
+            assert 0.0 <= g["beat_rate"] <= 100.0
+            assert isinstance(g["avg_gap"], float)
+
+    def test_competitor_gaps_zero_competitors(self):
+        """无对手时 competitor_gaps 为空列表"""
+        result = run_simulation(
+            bid_range=(35, 35),
+            bid_step=1.0,
+            competitor_dists=[],
+            num_simulations=100,
+        )
+        assert result[35.0]["competitor_gaps"] == []
