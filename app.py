@@ -3,10 +3,45 @@
 启动: streamlit run app.py --server.port 8502
 """
 
+import os
 import sys
 import json
 import streamlit as st
 import numpy as np
+
+# ---- 访问密码验证 ----
+# 本地开发：在 .streamlit/secrets.toml 中设置 APP_PASSWORD = "你的密码"
+# 云端部署：在 Streamlit Cloud → Settings → Secrets 中设置
+try:
+    APP_PASSWORD = st.secrets.get("APP_PASSWORD", "")
+except Exception:
+    APP_PASSWORD = os.getenv("APP_PASSWORD", "")
+
+
+def check_password():
+    """验证访问密码，防止他人消耗 API Token."""
+
+    if APP_PASSWORD and not st.session_state.get("authenticated"):
+        st.title("📊 报价测算工具")
+        st.caption("蒙特卡洛模拟 · 均值基准价法 · 容忍分差分析")
+
+        pwd = st.text_input(
+            "请输入访问密码",
+            type="password",
+            placeholder="输入密码后按 Enter",
+            key="pwd_input",
+        )
+        if pwd:
+            if pwd == APP_PASSWORD:
+                st.session_state.authenticated = True
+                st.rerun()
+            else:
+                st.error("密码错误")
+        st.stop()
+
+
+check_password()
+# ---- 密码验证结束 ----
 
 # 确保项目根目录在 sys.path 中
 from pathlib import Path
