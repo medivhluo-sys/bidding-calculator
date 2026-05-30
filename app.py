@@ -15,7 +15,7 @@ from simulation.engine import run_simulation
 from ui.sidebar import render_sidebar
 from ui.charts import (
     plot_tolerance_probability,
-    plot_competitor_gaps,
+    plot_competitor_gap_bars,
     get_best_recommendation,
 )
 
@@ -77,16 +77,21 @@ if run_button:
     )
     st.markdown(get_best_recommendation(results, tol))
 
-    # 视角二：与各对手的对比
+    # 视角二：选定报价下的对手分差剖面
     competitor_labels = [c["label"] for c in params["competitors"]]
-    gap_mode = st.radio(
-        "⚔️ 对手对比视角",
-        options=["gap", "beat_rate"],
-        format_func=lambda x: "期望分差（我 − 对手）" if x == "gap" else "胜率（我赢该对手的概率）",
-        horizontal=True,
+    available_bids = sorted(results.keys())
+    best_bid = max(results, key=lambda b: results[b]["tolerance_prob"])
+    best_idx = available_bids.index(best_bid)
+
+    st.subheader("⚔️ 对手分差剖面")
+    selected_bid = st.select_slider(
+        "选择报价点查看分差",
+        options=available_bids,
+        value=best_bid,
+        help="切换报价点，查看该点下与各对手的期望分差和胜率",
     )
     st.plotly_chart(
-        plot_competitor_gaps(results, competitor_labels, mode=gap_mode),
+        plot_competitor_gap_bars(results, selected_bid, competitor_labels),
         use_container_width=True,
     )
 

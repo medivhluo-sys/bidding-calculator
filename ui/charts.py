@@ -70,107 +70,71 @@ def plot_tolerance_probability(
     return fig
 
 
-def _rgba(hex_color: str, alpha: float) -> str:
-    """将 #RRGGBB 十六进制颜色转为 rgba(r, g, b, alpha) 字符串。"""
-    h = hex_color.lstrip("#")
-    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-    return f"rgba({r},{g},{b},{alpha})"
-
-
-# 对手分差图的颜色调色板
-_GAP_COLORS = [
-    "#E53935", "#1E88E5", "#43A047", "#FB8C00",
-    "#8E24AA", "#00ACC1", "#FFB300", "#5E35B1",
-]
-
-
-def plot_competitor_gaps(
+def plot_competitor_gap_bars(
     results: dict[float, dict[str, float]],
+    bid_value: float,
     competitor_labels: list[str],
-    mode: str = "gap",
 ) -> go.Figure:
-    """与各对手的对比曲线。
+    """选定报价下，与各对手的期望分差 ±1σ 水平条形图。
 
-    mode="gap": 期望分差（正值 = 我高于对手，负值 = 对手高于我）
-    mode="beat_rate": 胜率（我得分高于该对手的概率 %）
+    正值（绿色）= 我高于对手，负值（红色）= 对手高于我。
+    条形长度 = 均值，误差线 = ±1σ。
 
     Args:
         results: 模拟引擎返回的结果字典
+        bid_value: 选定的报价点
         competitor_labels: 对手标签列表
-        mode: "gap" 或 "beat_rate"
     """
-    bids = list(results.keys())
-    n_competitors = len(results[bids[0]]["competitor_gaps"])
+    # 找到最接近的报价点
+    available_bids = sorted(results.keys())
+    closest_bid = min(available_bids, key=lambda b: abs(b - bid_value))
+    data = results[closest_bid]["competitor_gaps"]
 
+    n = len(data)
     fig = go.Figure()
 
-    for j in range(n_competitors):
-        gaps = [results[b]["competitor_gaps"][j] for b in bids]
-        avg_gaps = [g["avg_gap"] for g in gaps]
-        std_gaps = [g["std_gap"] for g in gaps]
-
-        if mode == "beat_rate":
-            values = [g["beat_rate"] for g in gaps]
-        else:
-            values = avg_gaps
-
+    for j in range(n):
+        g = data[j]
         label = competitor_labels[j] if j < len(competitor_labels) else f"对手 {j + 1}"
-        color = _GAP_COLORS[j % len(_GAP_COLORS)]
+        avg = g["avg_gap"]
+        std = g["std_gap"]
+        color = "#43A047" if avg >= 0 else "#E53935"
 
-        if mode == "beat_rate":
-            hovertemplate = f"{label}<br>报价: %{{x}}<br>胜率: %{{y:.1f}}%<extra></extra>"
-        else:
-            hovertemplate = f"{label}<br>报价: %{{x}}<br>期望分差: %{{y:.2f}} ± %{{customdata:.2f}}<extra></extra>"
-
+        # 均值条
         fig.add_trace(
-            go.Scatter(
-                x=bids,
-                y=values,
-                mode="lines+markers",
+            go.Bar(
+                y=[label],
+                x=[avg],
+                orientation="h",
                 name=label,
-                line=dict(color=color, width=2),
-                marker=dict(size=5),
-                hovertemplate=hovertemplate,
-                customdata=std_gaps,
+                marker=dict(color=color, opacity=0.7),
+                error_x=dict(
+                    type="data",
+                    array=[std],
+                    visible=True,
+                    color="#666",
+                ),
+                hovertemplate=(
+                    f"{label}<br>"
+                    f"期望分差: %{{x:.2f}} ± {std:.2f}<br>"
+                    f"胜率: {g['beat_rate']:.1f}%<extra></extra>"
+                ),
+                showlegend=False,
             )
         )
 
-        # 期望分差模式下添加 ±1σ 阴影带
-        if mode != "beat_rate":
-            upper = [a + s for a, s in zip(avg_gaps, std_gaps)]
-            lower = [a - s for a, s in zip(avg_gaps, std_gaps)]
-            fig.add_trace(
-                go.Scatter(
-                    x=bids + bids[::-1],
-                    y=upper + lower[::-1],
-                    fill="toself",
-                    fillcolor=_rgba(color, 0.15),
-                    line=dict(width=0),
-                    name=f"{label} ±1σ",
-                    showlegend=False,
-                    hoverinfo="skip",
-                )
-            )
+    # 零分差参考线
+    fig.add_vline(x=0, line_dash="solid", line_color="#333")
 
-    if mode == "beat_rate":
-        # 50% 参考线
-        fig.add_hline(y=50, line_dash="dash", line_color="#999", annotation_text="50%")
-        fig.update_layout(
-            title="对各对手的胜率",
-            xaxis_title="你的报价",
-            yaxis_title="胜率 (%)",
-            yaxis_range=[0, 105],
-            hovermode="x unified",
-        )
-    else:
-        fig.add_hline(y=0, line_dash="solid", line_color="#333", annotation_text="持平线")
-        fig.update_layout(
-            title="与各对手的期望分差",
-            xaxis_title="你的报价",
-            yaxis_title="期望分差（我 − 对手）",
-            hovermode="x unified",
-        )
-
+    # 确保 X 轴对称 — 找到最大绝对值
+    max_abs = max(abs(g["avg_gap"]) + g["std_gap"] for g in data) * 1.2
+    fig.update_layout(
+        title=f"报价 {closest_bid} 时与各对手的分差",
+        xaxis_title="期望分差（我 − 对手）← 对手高 | 我高 →",
+        yaxis=dict(autorange="reversed"),  # 对手1在上
+        xaxis_range=[-max_abs, max_abs],
+        height=150 + n * 40,
+    )
     return fig
 
 
