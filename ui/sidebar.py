@@ -90,7 +90,12 @@ def render_sidebar() -> dict:
 
     competitors = []
     for i in range(st.session_state.competitor_count):
-        with st.sidebar.expander(f"对手 {i + 1}", expanded=(i < 3)):
+        default_name = f"对手 {i + 1}"
+        with st.sidebar.expander(default_name, expanded=(i < 3)):
+            name = st.text_input(
+                "名称", value=default_name, key=f"name_{i}",
+                help="可编辑对手名称",
+            )
             dist_type = st.selectbox(
                 "分布类型",
                 options=DIST_OPTIONS,
@@ -127,7 +132,7 @@ def render_sidebar() -> dict:
                 params = {"mu": mu, "sigma": sigma}
 
             competitors.append({
-                "label": f"对手 {i + 1}",
+                "label": name,
                 "dist_type": dist_type,
                 "params": params,
             })

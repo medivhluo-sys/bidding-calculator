@@ -4,7 +4,9 @@
 """
 
 import sys
+import json
 import streamlit as st
+import numpy as np
 
 # 确保项目根目录在 sys.path 中
 from pathlib import Path
@@ -31,43 +33,57 @@ st.caption("蒙特卡洛模拟 · 均值基准价法 · 容忍分差分析")
 # 侧边栏参数
 params = render_sidebar()
 
+# 检测参数是否变化，变化时清除缓存
+params_hash = json.dumps(params, sort_keys=True, default=str)
+if "params_hash" not in st.session_state:
+    st.session_state.params_hash = None
+if "results" not in st.session_state:
+    st.session_state.results = None
+
+params_changed = st.session_state.params_hash != params_hash
+
 # 模拟按钮
 run_button = st.sidebar.button("▶ 开始测算", type="primary", use_container_width=True)
 
-if run_button:
-    # 构建分布列表
-    try:
-        competitor_dists: list[BaseDistribution] = []
-        for comp in params["competitors"]:
-            dist = create_distribution(comp["dist_type"], **comp["params"])
-            competitor_dists.append(dist)
-    except ValueError as e:
-        st.error(f"参数错误：{e}")
-        st.stop()
+if run_button or (st.session_state.results is not None and not params_changed):
+    # 仅在首次点击或参数未变时使用缓存
+    if st.session_state.results is None or params_changed:
+        # 构建分布列表
+        try:
+            competitor_dists: list[BaseDistribution] = []
+            for comp in params["competitors"]:
+                dist = create_distribution(comp["dist_type"], **comp["params"])
+                competitor_dists.append(dist)
+        except ValueError as e:
+            st.error(f"参数错误：{e}")
+            st.stop()
 
-    # 校验报价范围
-    if params["bid_min"] >= params["bid_max"]:
-        st.error("报价扫描下限必须小于上限")
-        st.stop()
+        if params["bid_min"] >= params["bid_max"]:
+            st.error("报价扫描下限必须小于上限")
+            st.stop()
 
-    # 运行模拟
-    with st.spinner(f"正在模拟 {params['num_simulations']:,} 次..."):
-        results = run_simulation(
-            bid_range=(params["bid_min"], params["bid_max"]),
-            bid_step=params["bid_step"],
-            competitor_dists=competitor_dists,
-            num_simulations=params["num_simulations"],
-            tolerance=params["tolerance"],
-            benchmark_coefficient=params["benchmark_coefficient"],
-            max_score=params["max_score"],
-            deduction_up=params["deduction_up"],
-            deduction_down=params["deduction_down"],
-            min_score=params["min_score"],
-        )
+        with st.spinner(f"正在模拟 {params['num_simulations']:,} 次..."):
+            results = run_simulation(
+                bid_range=(params["bid_min"], params["bid_max"]),
+                bid_step=params["bid_step"],
+                competitor_dists=competitor_dists,
+                num_simulations=params["num_simulations"],
+                tolerance=params["tolerance"],
+                benchmark_coefficient=params["benchmark_coefficient"],
+                max_score=params["max_score"],
+                deduction_up=params["deduction_up"],
+                deduction_down=params["deduction_down"],
+                min_score=params["min_score"],
+            )
 
-    st.success(f"模拟完成！共 {len(results)} 个报价点，每个模拟 {params['num_simulations']:,} 次")
+        st.session_state.results = results
+        st.session_state.params_hash = params_hash
 
+    results = st.session_state.results
     tol = params["tolerance"]
+
+    if run_button:
+        st.success(f"模拟完成！共 {len(results)} 个报价点，每个模拟 {params['num_simulations']:,} 次")
 
     # 视角一：容忍分差概率
     st.subheader("🎯 分差 ≤ %s 分的概率" % tol)
@@ -81,14 +97,13 @@ if run_button:
     competitor_labels = [c["label"] for c in params["competitors"]]
     available_bids = sorted(results.keys())
     best_bid = max(results, key=lambda b: results[b]["tolerance_prob"])
-    best_idx = available_bids.index(best_bid)
 
     st.subheader("⚔️ 对手分差剖面")
     selected_bid = st.select_slider(
-        "选择报价点查看分差",
+        "选择报价点查看分差（无需重跑模拟）",
         options=available_bids,
         value=best_bid,
-        help="切换报价点，查看该点下与各对手的期望分差和胜率",
+        help="切换报价点，查看该点下与各对手的分差概率分布",
     )
     st.plotly_chart(
         plot_competitor_gap_bars(results, selected_bid, competitor_labels),
