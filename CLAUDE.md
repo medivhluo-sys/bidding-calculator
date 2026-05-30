@@ -14,6 +14,15 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## 密码设置
+
+公有部署需设置访问密码：
+
+- **本地开发**：创建 `.streamlit/secrets.toml`，写入 `APP_PASSWORD = "你的密码"`
+- **Streamlit Cloud**：在 App Settings → Secrets 中设置 `APP_PASSWORD = "你的密码"`
+
+不设密码时本地可直接访问。
+
 ## 运行
 
 ```bash
