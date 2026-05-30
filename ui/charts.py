@@ -80,17 +80,17 @@ _GAP_COLORS = [
 def plot_competitor_gaps(
     results: dict[float, dict[str, float]],
     competitor_labels: list[str],
+    mode: str = "gap",
 ) -> go.Figure:
-    """与各对手的期望分差曲线。
+    """与各对手的对比曲线。
 
-    正值 = 我得分高于该对手，负值 = 我低于该对手。
+    mode="gap": 期望分差（正值 = 我高于对手，负值 = 对手高于我）
+    mode="beat_rate": 胜率（我得分高于该对手的概率 %）
 
     Args:
         results: 模拟引擎返回的结果字典
-        competitor_labels: 对手标签列表（如 ["对手 1", "对手 2"]）
-
-    Returns:
-        Plotly Figure 对象
+        competitor_labels: 对手标签列表
+        mode: "gap" 或 "beat_rate"
     """
     bids = list(results.keys())
     n_competitors = len(results[bids[0]]["competitor_gaps"])
@@ -98,31 +98,50 @@ def plot_competitor_gaps(
     fig = go.Figure()
 
     for j in range(n_competitors):
-        gaps = [results[b]["competitor_gaps"][j]["avg_gap"] for b in bids]
+        if mode == "beat_rate":
+            values = [results[b]["competitor_gaps"][j]["beat_rate"] for b in bids]
+        else:
+            values = [results[b]["competitor_gaps"][j]["avg_gap"] for b in bids]
+
         label = competitor_labels[j] if j < len(competitor_labels) else f"对手 {j + 1}"
         color = _GAP_COLORS[j % len(_GAP_COLORS)]
+
+        if mode == "beat_rate":
+            hovertemplate = f"{label}<br>报价: %{{x}}<br>胜率: %{{y:.1f}}%<extra></extra>"
+        else:
+            hovertemplate = f"{label}<br>报价: %{{x}}<br>期望分差: %{{y:.2f}}<extra></extra>"
 
         fig.add_trace(
             go.Scatter(
                 x=bids,
-                y=gaps,
+                y=values,
                 mode="lines+markers",
                 name=label,
                 line=dict(color=color, width=2),
                 marker=dict(size=5),
-                hovertemplate=f"{label}<br>报价: %{{x}}<br>期望分差: %{{y:.2f}}<extra></extra>",
+                hovertemplate=hovertemplate,
             )
         )
 
-    # 零分差参考线
-    fig.add_hline(y=0, line_dash="solid", line_color="#333", annotation_text="持平线")
+    if mode == "beat_rate":
+        # 50% 参考线
+        fig.add_hline(y=50, line_dash="dash", line_color="#999", annotation_text="50%")
+        fig.update_layout(
+            title="对各对手的胜率",
+            xaxis_title="你的报价",
+            yaxis_title="胜率 (%)",
+            yaxis_range=[0, 105],
+            hovermode="x unified",
+        )
+    else:
+        fig.add_hline(y=0, line_dash="solid", line_color="#333", annotation_text="持平线")
+        fig.update_layout(
+            title="与各对手的期望分差",
+            xaxis_title="你的报价",
+            yaxis_title="期望分差（我 − 对手）",
+            hovermode="x unified",
+        )
 
-    fig.update_layout(
-        title="与各对手的期望分差",
-        xaxis_title="你的报价",
-        yaxis_title="期望分差（我 − 对手）",
-        hovermode="x unified",
-    )
     return fig
 
 

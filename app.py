@@ -77,12 +77,16 @@ if run_button:
     )
     st.markdown(get_best_recommendation(results, tol))
 
-    # 视角二：与各对手的分差
-    st.subheader("⚔️ 与各对手的期望分差")
-    st.caption("正值 = 我得分高于对手，负值 = 对手高于我")
+    # 视角二：与各对手的对比
     competitor_labels = [c["label"] for c in params["competitors"]]
+    gap_mode = st.radio(
+        "⚔️ 对手对比视角",
+        options=["gap", "beat_rate"],
+        format_func=lambda x: "期望分差（我 − 对手）" if x == "gap" else "胜率（我赢该对手的概率）",
+        horizontal=True,
+    )
     st.plotly_chart(
-        plot_competitor_gaps(results, competitor_labels),
+        plot_competitor_gaps(results, competitor_labels, mode=gap_mode),
         use_container_width=True,
     )
 
