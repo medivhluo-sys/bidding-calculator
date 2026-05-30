@@ -70,6 +70,13 @@ def plot_tolerance_probability(
     return fig
 
 
+def _rgba(hex_color: str, alpha: float) -> str:
+    """将 #RRGGBB 十六进制颜色转为 rgba(r, g, b, alpha) 字符串。"""
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
 # 对手分差图的颜色调色板
 _GAP_COLORS = [
     "#E53935", "#1E88E5", "#43A047", "#FB8C00",
@@ -98,10 +105,14 @@ def plot_competitor_gaps(
     fig = go.Figure()
 
     for j in range(n_competitors):
+        gaps = [results[b]["competitor_gaps"][j] for b in bids]
+        avg_gaps = [g["avg_gap"] for g in gaps]
+        std_gaps = [g["std_gap"] for g in gaps]
+
         if mode == "beat_rate":
-            values = [results[b]["competitor_gaps"][j]["beat_rate"] for b in bids]
+            values = [g["beat_rate"] for g in gaps]
         else:
-            values = [results[b]["competitor_gaps"][j]["avg_gap"] for b in bids]
+            values = avg_gaps
 
         label = competitor_labels[j] if j < len(competitor_labels) else f"对手 {j + 1}"
         color = _GAP_COLORS[j % len(_GAP_COLORS)]
@@ -109,7 +120,7 @@ def plot_competitor_gaps(
         if mode == "beat_rate":
             hovertemplate = f"{label}<br>报价: %{{x}}<br>胜率: %{{y:.1f}}%<extra></extra>"
         else:
-            hovertemplate = f"{label}<br>报价: %{{x}}<br>期望分差: %{{y:.2f}}<extra></extra>"
+            hovertemplate = f"{label}<br>报价: %{{x}}<br>期望分差: %{{y:.2f}} ± %{{customdata:.2f}}<extra></extra>"
 
         fig.add_trace(
             go.Scatter(
@@ -120,8 +131,26 @@ def plot_competitor_gaps(
                 line=dict(color=color, width=2),
                 marker=dict(size=5),
                 hovertemplate=hovertemplate,
+                customdata=std_gaps,
             )
         )
+
+        # 期望分差模式下添加 ±1σ 阴影带
+        if mode != "beat_rate":
+            upper = [a + s for a, s in zip(avg_gaps, std_gaps)]
+            lower = [a - s for a, s in zip(avg_gaps, std_gaps)]
+            fig.add_trace(
+                go.Scatter(
+                    x=bids + bids[::-1],
+                    y=upper + lower[::-1],
+                    fill="toself",
+                    fillcolor=_rgba(color, 0.15),
+                    line=dict(width=0),
+                    name=f"{label} ±1σ",
+                    showlegend=False,
+                    hoverinfo="skip",
+                )
+            )
 
     if mode == "beat_rate":
         # 50% 参考线

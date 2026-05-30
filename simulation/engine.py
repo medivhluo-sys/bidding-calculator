@@ -53,6 +53,7 @@ def run_simulation(
         total_score = 0.0
         n_competitors = len(competitor_dists)
         gap_sums = [0.0] * n_competitors
+        gap_sq_sums = [0.0] * n_competitors
         beat_counts = [0] * n_competitors
 
         for _ in range(num_simulations):
@@ -84,19 +85,24 @@ def run_simulation(
             for j in range(n_competitors):
                 gap = my_score - scores[j + 1]
                 gap_sums[j] += gap
+                gap_sq_sums[j] += gap * gap
                 if gap > 0:
                     beat_counts[j] += 1
 
             total_score += my_score
 
+        n = num_simulations
         results[bid_self] = {
-            "win_prob": win_count / num_simulations * 100,
-            "tolerance_prob": tolerance_count / num_simulations * 100,
-            "expected_score": total_score / num_simulations,
+            "win_prob": win_count / n * 100,
+            "tolerance_prob": tolerance_count / n * 100,
+            "expected_score": total_score / n,
             "competitor_gaps": [
                 {
-                    "avg_gap": gap_sums[j] / num_simulations,
-                    "beat_rate": beat_counts[j] / num_simulations * 100,
+                    "avg_gap": gap_sums[j] / n,
+                    "beat_rate": beat_counts[j] / n * 100,
+                    "std_gap": (
+                        max(0.0, gap_sq_sums[j] / n - (gap_sums[j] / n) ** 2) ** 0.5
+                    ),
                 }
                 for j in range(n_competitors)
             ],
