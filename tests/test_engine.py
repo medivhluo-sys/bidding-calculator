@@ -163,10 +163,14 @@ class TestRunSimulation:
             num_simulations=500,
         )
         gaps = result[35.0]["competitor_gaps"]
+        bins = result[35.0]["gap_bins"]
         assert len(gaps) == 2  # 两个对手
+        assert len(bins) == 6  # 6 个分桶
         for g in gaps:
-            assert 0.0 <= g["beat_rate"] <= 100.0
-            assert isinstance(g["avg_gap"], float)
+            hist = g["histogram"]
+            assert len(hist) == 6
+            # 所有桶的概率之和约等于 100%
+            assert 95.0 <= sum(hist) <= 105.0
 
     def test_competitor_gaps_zero_competitors(self):
         """无对手时 competitor_gaps 为空列表"""

@@ -75,65 +75,70 @@ def plot_competitor_gap_bars(
     bid_value: float,
     competitor_labels: list[str],
 ) -> go.Figure:
-    """选定报价下，与各对手的期望分差 ±1σ 水平条形图。
+    """选定报价下，与各对手的分差概率分布（水平堆叠条形图）。
 
-    正值（绿色）= 我高于对手，负值（红色）= 对手高于我。
-    条形长度 = 均值，误差线 = ±1σ。
+    每个对手一行，用颜色深浅表示分差落在各区间的概率。
 
     Args:
         results: 模拟引擎返回的结果字典
         bid_value: 选定的报价点
         competitor_labels: 对手标签列表
     """
-    # 找到最接近的报价点
     available_bids = sorted(results.keys())
     closest_bid = min(available_bids, key=lambda b: abs(b - bid_value))
     data = results[closest_bid]["competitor_gaps"]
+    bin_labels = results[closest_bid]["gap_bins"]
 
-    n = len(data)
+    n_competitors = len(data)
+    n_bins = len(bin_labels)
+
+    # 颜色：左侧三档（落后）红系，右侧三档（领先）绿系
+    colors = [
+        "#C62828", "#EF5350", "#FFCDD2",  # 落后 >3, 1~3, <1
+        "#C8E6C9", "#66BB6A", "#2E7D32",  # 领先 <1, 1~3, >3
+    ]
+
     fig = go.Figure()
 
-    for j in range(n):
-        g = data[j]
+    for j in range(n_competitors):
+        hist = data[j]["histogram"]
         label = competitor_labels[j] if j < len(competitor_labels) else f"对手 {j + 1}"
-        avg = g["avg_gap"]
-        std = g["std_gap"]
-        color = "#43A047" if avg >= 0 else "#E53935"
 
-        # 均值条
-        fig.add_trace(
-            go.Bar(
-                y=[label],
-                x=[avg],
-                orientation="h",
-                name=label,
-                marker=dict(color=color, opacity=0.7),
-                error_x=dict(
-                    type="data",
-                    array=[std],
-                    visible=True,
-                    color="#666",
-                ),
-                hovertemplate=(
-                    f"{label}<br>"
-                    f"期望分差: %{{x:.2f}} ± {std:.2f}<br>"
-                    f"胜率: {g['beat_rate']:.1f}%<extra></extra>"
-                ),
-                showlegend=False,
+        for k in range(n_bins):
+            if hist[k] < 0.1:  # 跳过概率极低的段
+                continue
+            fig.add_trace(
+                go.Bar(
+                    y=[label],
+                    x=[hist[k]],
+                    orientation="h",
+                    name=bin_labels[k],
+                    marker=dict(color=colors[k]),
+                    hovertemplate=(
+                        f"{label} | {bin_labels[k]}<br>"
+                        f"概率: %{{x:.1f}}%<extra></extra>"
+                    ),
+                    legendgroup=bin_labels[k],
+                    showlegend=(j == 0),  # 图例只显示一次
+                )
             )
-        )
 
-    # 零分差参考线
-    fig.add_vline(x=0, line_dash="solid", line_color="#333")
-
-    # 确保 X 轴对称 — 找到最大绝对值
-    max_abs = max(abs(g["avg_gap"]) + g["std_gap"] for g in data) * 1.2
     fig.update_layout(
-        title=f"报价 {closest_bid} 时与各对手的分差",
-        xaxis_title="期望分差（我 − 对手）← 对手高 | 我高 →",
-        yaxis=dict(autorange="reversed"),  # 对手1在上
-        xaxis_range=[-max_abs, max_abs],
-        height=150 + n * 40,
+        title=f"报价 {closest_bid} 时与各对手的分差概率分布",
+        xaxis_title="概率 (%)",
+        yaxis=dict(autorange="reversed"),
+        barmode="stack",
+        xaxis_range=[0, 105],
+        height=120 + n_competitors * 50,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.3,
+            xanchor="center",
+            x=0.5,
+            traceorder="normal",
+        ),
+        margin=dict(b=80),
     )
     return fig
 

@@ -47,14 +47,21 @@ def run_simulation(
 
     results: dict[float, dict[str, float]] = {}
 
+    # 分差分布的分桶边界和标签
+    GAP_BINS = [-1e9, -3, -1, 0, 1, 3, 1e9]
+    GAP_LABELS = [
+        "落后 >3分", "落后 1~3分", "落后 <1分",
+        "领先 <1分", "领先 1~3分", "领先 >3分",
+    ]
+
     for bid_self in bid_values:
         win_count = 0
         tolerance_count = 0
         total_score = 0.0
         n_competitors = len(competitor_dists)
-        gap_sums = [0.0] * n_competitors
-        gap_sq_sums = [0.0] * n_competitors
-        beat_counts = [0] * n_competitors
+        n_bins = len(GAP_BINS) - 1
+        # gap_hist[j][k] = 对手 j 落在第 k 个桶的次数
+        gap_hist = [[0] * n_bins for _ in range(n_competitors)]
 
         for _ in range(num_simulations):
             competitor_bids = [d.sample() for d in competitor_dists]
@@ -81,13 +88,14 @@ def run_simulation(
             if my_score >= best_score - tolerance:
                 tolerance_count += 1
 
-            # 与每个对手的分差
+            # 与每个对手的分差——落入对应分桶
             for j in range(n_competitors):
                 gap = my_score - scores[j + 1]
-                gap_sums[j] += gap
-                gap_sq_sums[j] += gap * gap
-                if gap > 0:
-                    beat_counts[j] += 1
+                # 找到 gap 落入的桶
+                for k in range(n_bins):
+                    if GAP_BINS[k] <= gap < GAP_BINS[k + 1]:
+                        gap_hist[j][k] += 1
+                        break
 
             total_score += my_score
 
@@ -96,13 +104,10 @@ def run_simulation(
             "win_prob": win_count / n * 100,
             "tolerance_prob": tolerance_count / n * 100,
             "expected_score": total_score / n,
+            "gap_bins": GAP_LABELS,
             "competitor_gaps": [
                 {
-                    "avg_gap": gap_sums[j] / n,
-                    "beat_rate": beat_counts[j] / n * 100,
-                    "std_gap": (
-                        max(0.0, gap_sq_sums[j] / n - (gap_sums[j] / n) ** 2) ** 0.5
-                    ),
+                    "histogram": [gap_hist[j][k] / n * 100 for k in range(n_bins)],
                 }
                 for j in range(n_competitors)
             ],
