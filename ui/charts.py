@@ -32,13 +32,18 @@ def plot_tolerance_probability(
         )
     )
 
-    # 95% 和 90% 参考线
-    for level, color in [(95, "#2E7D32"), (90, "#FF9800")]:
+    # 四条置信线
+    for level, color in [
+        (99, "#00695C"),
+        (95, "#2E7D32"),
+        (90, "#FF9800"),
+        (80, "#9E9E9E"),
+    ]:
         fig.add_hline(
             y=level,
             line_dash="dash",
             line_color=color,
-            annotation_text=f"{level}% 置信线",
+            annotation_text=f"{level}%",
         )
 
     # 标注最佳报价

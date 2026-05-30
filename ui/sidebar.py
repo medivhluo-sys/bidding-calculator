@@ -154,6 +154,15 @@ def render_sidebar() -> dict:
         help="次数越多结果越稳定但耗时越长。调参时可用 500-1000 快速预览",
     )
 
+    tolerance = st.slider(
+        "容忍分差",
+        min_value=0.0,
+        max_value=10.0,
+        value=3.0,
+        step=0.5,
+        help="若你的得分不低于最高分 - N 分，则视为安全。N=0 即严格中标。",
+    )
+
     return {
         "benchmark_method": benchmark_method,
         "benchmark_coefficient": benchmark_coefficient,
@@ -166,4 +175,5 @@ def render_sidebar() -> dict:
         "bid_max": bid_max,
         "bid_step": bid_step,
         "num_simulations": num_simulations,
+        "tolerance": tolerance,
     }

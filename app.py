@@ -27,17 +27,6 @@ st.caption("蒙特卡洛模拟 · 均值基准价法 · 容忍分差分析")
 # 侧边栏参数
 params = render_sidebar()
 
-# 主区域：容忍分差滑块（核心交互控件）
-st.subheader("🎯 分差容忍度")
-tolerance = st.slider(
-    "与最高分的分差 ≤ N 分视为安全",
-    min_value=0.0,
-    max_value=10.0,
-    value=3.0,
-    step=0.5,
-    help="若你的得分不低于最高分 - N 分，则视为该次模拟中安全。N=0 即严格中标。",
-)
-
 # 模拟按钮
 run_button = st.sidebar.button("▶ 开始测算", type="primary", use_container_width=True)
 
@@ -64,7 +53,7 @@ if run_button:
             bid_step=params["bid_step"],
             competitor_dists=competitor_dists,
             num_simulations=params["num_simulations"],
-            tolerance=tolerance,
+            tolerance=params["tolerance"],
             benchmark_coefficient=params["benchmark_coefficient"],
             max_score=params["max_score"],
             deduction_up=params["deduction_up"],
@@ -74,21 +63,23 @@ if run_button:
 
     st.success(f"模拟完成！共 {len(results)} 个报价点，每个模拟 {params['num_simulations']:,} 次")
 
+    tol = params["tolerance"]
+
     # 核心图表
     st.plotly_chart(
-        plot_tolerance_probability(results, tolerance),
+        plot_tolerance_probability(results, tol),
         use_container_width=True,
     )
 
     # 建议
-    st.markdown(get_best_recommendation(results, tolerance))
+    st.markdown(get_best_recommendation(results, tol))
 
     # 原始数据（折叠）
     with st.expander("📋 原始数据"):
         st.dataframe(
             {
                 "报价": list(results.keys()),
-                f"分差≤{tolerance}分的概率(%)": [
+                f"分差≤{tol}分的概率(%)": [
                     f"{results[b]['tolerance_prob']:.2f}" for b in results
                 ],
                 "严格中标概率(%)": [
@@ -99,4 +90,4 @@ if run_button:
             use_container_width=True,
         )
 else:
-    st.info("👈 在左侧配置参数，调整上方分差容忍度，点击「开始测算」")
+    st.info("👈 在左侧配置参数和容忍分差，点击「开始测算」")
